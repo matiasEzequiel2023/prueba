@@ -4,36 +4,52 @@ import { Camera } from '@mediapipe/camera_utils';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 import styled from 'styled-components';
 
-// Estilos generales
+// =======================
+// ESTILOS CON STYLED-COMPONENTS
+// =======================
 const Container = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 20px;
   font-family: 'Helvetica Neue', sans-serif;
-  background: #f2f2f2;
+  background: #000;
   min-height: 100vh;
+  color: #fff;
 `;
 
 const Header = styled.h1`
-  color: #333;
+  color: #FF8C00;
+  font-family: 'Roboto', sans-serif;
+  font-size: 2rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
   margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #FF8C00;
 `;
 
+// Se ha modificado el VideoContainer para que sea más largo y se centre su contenido
 const VideoContainer = styled.div`
   position: relative;
-  width: 90%;
-  max-width: 500px;
+  width: 100%;
+  height: 450px;
+  max-width: 700px;
+  aspect-ratio: 16/9;
   background: #000;
   border-radius: 10px;
   overflow: hidden;
   margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 `;
 
 const VideoStyled = styled.video`
   width: 100%;
-  height: auto;
-  position: relative;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
 `;
 
 const CanvasStyled = styled.canvas`
@@ -43,16 +59,16 @@ const CanvasStyled = styled.canvas`
 `;
 
 const FeedbackContainer = styled.div`
-  width: 90%;
-  max-width: 500px;
-  background: #fff;
+  width: 100%;
+  max-width: 700px;
+  background: #222;
   border-radius: 10px;
   padding: 15px;
   margin-bottom: 20px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   text-align: center;
   font-size: 18px;
-  color: #555;
+  color: #fff;
 `;
 
 const ButtonGroup = styled.div`
@@ -63,27 +79,55 @@ const ButtonGroup = styled.div`
 `;
 
 const ExerciseButton = styled.button`
-  background: ${(props) => (props.active ? '#4CAF50' : '#fff')};
-  color: ${(props) => (props.active ? '#fff' : '#4CAF50')};
-  border: 2px solid #4CAF50;
+  background: ${(props) => (props.active ? '#e07b00' : '#FF8C00')};
+  color: #fff;
+  border: 2px solid #FF8C00;
   border-radius: 20px;
   padding: 10px 20px;
   font-size: 16px;
   cursor: pointer;
   transition: all 0.3s ease;
   &:hover {
-    background: #4CAF50;
-    color: #fff;
+    background: #e07b00;
   }
 `;
 
+const ZoomContainer = styled.div`
+  margin: 10px 0;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const ZoomSlider = styled.input`
+  width: 300px;
+`;
+
+// =======================
+// COMPONENTE PRINCIPAL
+// =======================
 function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  // Contador para los fotogramas consecutivos en los que la postura es correcta
+  const correctCountRef = useRef(0);
+  // Umbral para considerar que la postura es perfecta
+  const CORRECT_THRESHOLD = 50;
 
-  // Estado para feedback y selección de ejercicio
+  // Estados para feedback, progreso, ejercicio seleccionado y zoom
   const [feedback, setFeedback] = useState('');
-  const [selectedExercise, setSelectedExercise] = useState('squat'); // 'squat' o 'biceps'
+  const [progress, setProgress] = useState(0);
+  const [selectedExercise, setSelectedExercise] = useState('squat');
+  const [zoom, setZoom] = useState(1);
+
+  // Valores ideales de ángulos para cada ejercicio
+  const idealAngles = {
+    squat: 85,         // Sentadilla: ángulo ideal de la rodilla
+    biceps: 35,        // Bíceps Curl: ángulo ideal del codo
+    sumoDeadlift: 115, // Peso Muerto Sumo: ángulo ideal del torso
+    crunch: 110        // Crunch: ángulo ideal (nariz-hombro-cadera)
+  };
 
   // Función para calcular el ángulo entre 3 puntos (en grados)
   const computeAngle = (A, B, C) => {
@@ -95,87 +139,127 @@ function App() {
     return angle;
   };
 
-  // Envuelve analyzeExercise en useCallback para estabilizarla
+  // Función de análisis de ejercicio sin plantilla visual, basándose en valores ideales
   const analyzeExercise = useCallback((landmarks) => {
     if (!landmarks) return;
+    
+    let isCorrect = false;
+    let localFeedback = '';
+    let currentAngle = 0;
+    let ideal = 0;
 
     if (selectedExercise === 'squat') {
-      // Utilizamos la pierna izquierda: hip (23), knee (25) y ankle (27)
+      // Sentadillas
       const hip = landmarks[23];
       const knee = landmarks[25];
       const ankle = landmarks[27];
-
-      // Calculamos el ángulo de la rodilla
-      const kneeAngle = computeAngle(hip, knee, ankle);
-
-      if (kneeAngle > 160) {
-        setFeedback('¡Estás de pie! Inicia la sentadilla bajando lentamente.');
-      } else if (kneeAngle <= 160 && kneeAngle > 90) {
-        setFeedback('¡Bajando! Asegúrate de mantener la espalda recta.');
-      } else if (kneeAngle <= 90) {
-        setFeedback('¡Sentadilla completa! Vuelve a subir con control.');
+      currentAngle = computeAngle(hip, knee, ankle);
+      ideal = idealAngles.squat;
+      if (currentAngle > 160) {
+        localFeedback = '¡Estás de pie! Baja para iniciar la sentadilla.';
+      } else if (currentAngle <= 160 && currentAngle > ideal) {
+        localFeedback = 'Bajando... Acerca tu ángulo a ' + ideal + '°.';
+      } else if (currentAngle <= ideal) {
+        localFeedback = '¡Sentadilla perfecta! Mantén la posición.';
+        isCorrect = true;
       }
     } else if (selectedExercise === 'biceps') {
-      // Utilizamos el brazo derecho: shoulder (12), elbow (14) y wrist (16)
+      // Bíceps Curl
       const shoulder = landmarks[12];
       const elbow = landmarks[14];
       const wrist = landmarks[16];
-
-      // Calculamos el ángulo del codo
-      const elbowAngle = computeAngle(shoulder, elbow, wrist);
-
-      if (elbowAngle > 160) {
-        setFeedback('Brazo extendido. Inicia el curl flexionando el codo.');
-      } else if (elbowAngle <= 160 && elbowAngle > 40) {
-        setFeedback('En movimiento... sigue con el curl.');
-      } else if (elbowAngle <= 40) {
-        setFeedback('¡Curl completo! Regresa a la posición inicial.');
+      currentAngle = computeAngle(shoulder, elbow, wrist);
+      ideal = idealAngles.biceps;
+      if (currentAngle > 160) {
+        localFeedback = 'Brazo extendido. Flexiona el codo para iniciar el curl.';
+      } else if (currentAngle <= 160 && currentAngle > ideal) {
+        localFeedback = 'En movimiento... Trata de alcanzar ' + ideal + '°.';
+      } else if (currentAngle <= ideal) {
+        localFeedback = '¡Curl perfecto! Mantén el codo pegado al torso.';
+        isCorrect = true;
       }
-    } else {
-      setFeedback('');
+    } else if (selectedExercise === 'sumoDeadlift') {
+      // Peso Muerto Sumo
+      const shoulder = landmarks[11];
+      const hip = landmarks[23];
+      const knee = landmarks[25];
+      currentAngle = computeAngle(shoulder, hip, knee);
+      ideal = idealAngles.sumoDeadlift;
+      if (currentAngle > 170) {
+        localFeedback = 'Posición inicial. Baja la cadera para iniciar.';
+      } else if (currentAngle <= 170 && currentAngle > ideal) {
+        localFeedback = 'Bajando... Acerca el ángulo a ' + ideal + '°.';
+      } else if (currentAngle <= ideal) {
+        localFeedback = '¡Peso muerto sumo perfecto! Mantén la postura.';
+        isCorrect = true;
+      }
+    } else if (selectedExercise === 'crunch') {
+      // Crunch
+      const nose = landmarks[0];
+      const shoulder = landmarks[12];
+      const hip = landmarks[24];
+      currentAngle = computeAngle(nose, shoulder, hip);
+      ideal = idealAngles.crunch;
+      if (currentAngle > 160) {
+        localFeedback = 'Inicia el crunch levantando el torso.';
+      } else if (currentAngle <= 160 && currentAngle > ideal) {
+        localFeedback = 'Crunch en progreso... Trata de alcanzar ' + ideal + '°.';
+      } else if (currentAngle <= ideal) {
+        localFeedback = '¡Crunch perfecto! Mantén la contracción.';
+        isCorrect = true;
+      }
     }
-  }, [selectedExercise]); // Se actualiza solo cuando selectedExercise cambia
 
+    // Actualizar el contador de fotogramas correctos
+    if (isCorrect) {
+      correctCountRef.current = Math.min(correctCountRef.current + 1, CORRECT_THRESHOLD);
+    } else {
+      correctCountRef.current = 0;
+    }
+    setProgress(Math.round((correctCountRef.current / CORRECT_THRESHOLD) * 100));
+
+    // Si se mantiene la postura perfecta durante los fotogramas requeridos, se aprueba el ejercicio
+    if (correctCountRef.current === CORRECT_THRESHOLD) {
+      localFeedback = `${localFeedback} — ¡Ejercicio aprobado!`;
+    }
+    setFeedback(localFeedback);
+
+    // Dibujo de indicadores en el canvas:
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.font = '20px Arial';
+      ctx.fillStyle = 'yellow';
+      ctx.fillText(`Ángulo: ${Math.round(currentAngle)}° (Ideal: ${ideal}°)`, 10, 30);
+    }
+  }, [selectedExercise]);
+
+  // Configuración de Mediapipe Holistic y cámara
   useEffect(() => {
     const holistic = new Holistic({
       locateFile: (file) =>
         `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`,
     });
-
     holistic.setOptions({
       modelComplexity: 1,
       smoothLandmarks: true,
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5,
     });
-
     holistic.onResults((results) => {
-      // Verificar que el canvas esté disponible
       const canvas = canvasRef.current;
       if (!canvas) return;
-
       const ctx = canvas.getContext('2d');
-      // Asegurarse de que el canvas tenga dimensiones definidas
-      canvas.width = canvas.width || 640;
-      canvas.height = canvas.height || 480;
-
+      canvas.width = 640;
+      canvas.height = 480;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
       if (results.poseLandmarks) {
-        // Dibuja las conexiones y landmarks
-        drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
-          color: '#00FF00',
-          lineWidth: 4,
-        });
-        drawLandmarks(ctx, results.poseLandmarks, {
-          color: '#FF0000',
-          lineWidth: 2,
-        });
+        drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
+        drawLandmarks(ctx, results.poseLandmarks, { color: '#FF0000', lineWidth: 2 });
         analyzeExercise(results.poseLandmarks);
       }
     });
-
     let camera = null;
     if (videoRef.current) {
       camera = new Camera(videoRef.current, {
@@ -187,41 +271,80 @@ function App() {
       });
       camera.start();
     }
-
     return () => {
       if (camera) camera.stop();
     };
-  }, [selectedExercise, analyzeExercise]); // Se actualiza si cambia selectedExercise o analyzeExercise
+  }, [selectedExercise, analyzeExercise]);
 
   return (
     <Container>
-      <Header>Reconocimiento y Corrección de Ejercicios</Header>
+      <Header>Entrena con nuestra IA</Header>
 
-      {/* Contenedor del video */}
-      <VideoContainer>
+      {/* Contenedor con control de zoom aplicado */}
+      <VideoContainer style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}>
         <VideoStyled ref={videoRef} autoPlay playsInline muted />
         <CanvasStyled ref={canvasRef} width={640} height={480} />
       </VideoContainer>
 
-      {/* Feedback de corrección */}
       <FeedbackContainer>
         <strong>Feedback:</strong>
         <p>{feedback}</p>
+        <p>Progreso: {progress}%</p>
       </FeedbackContainer>
 
-      {/* Botones para seleccionar ejercicio */}
+      <ZoomContainer>
+        <label htmlFor="zoom">Zoom:</label>
+        <ZoomSlider
+          id="zoom"
+          type="range"
+          min="1"
+          max="3"
+          step="0.1"
+          value={zoom}
+          onChange={(e) => setZoom(e.target.value)}
+        />
+      </ZoomContainer>
+
       <ButtonGroup>
         <ExerciseButton
           active={selectedExercise === 'squat'}
-          onClick={() => setSelectedExercise('squat')}
+          onClick={() => {
+            setSelectedExercise('squat');
+            correctCountRef.current = 0;
+            setProgress(0);
+          }}
         >
           Sentadillas
         </ExerciseButton>
         <ExerciseButton
           active={selectedExercise === 'biceps'}
-          onClick={() => setSelectedExercise('biceps')}
+          onClick={() => {
+            setSelectedExercise('biceps');
+            correctCountRef.current = 0;
+            setProgress(0);
+          }}
         >
           Bíceps Curl
+        </ExerciseButton>
+        <ExerciseButton
+          active={selectedExercise === 'sumoDeadlift'}
+          onClick={() => {
+            setSelectedExercise('sumoDeadlift');
+            correctCountRef.current = 0;
+            setProgress(0);
+          }}
+        >
+          Peso Muerto Sumo
+        </ExerciseButton>
+        <ExerciseButton
+          active={selectedExercise === 'crunch'}
+          onClick={() => {
+            setSelectedExercise('crunch');
+            correctCountRef.current = 0;
+            setProgress(0);
+          }}
+        >
+          Crunch en Suelo
         </ExerciseButton>
       </ButtonGroup>
     </Container>
