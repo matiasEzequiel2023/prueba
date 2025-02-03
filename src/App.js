@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Holistic, POSE_CONNECTIONS } from '@mediapipe/holistic';
 import { Camera } from '@mediapipe/camera_utils';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
@@ -80,7 +80,7 @@ const ExerciseButton = styled.button`
 function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  
+
   // Estado para feedback y selección de ejercicio
   const [feedback, setFeedback] = useState('');
   const [selectedExercise, setSelectedExercise] = useState('squat'); // 'squat' o 'biceps'
@@ -95,8 +95,8 @@ function App() {
     return angle;
   };
 
-  // Lógica para analizar la postura según el ejercicio seleccionado
-  const analyzeExercise = (landmarks) => {
+  // Envuelve analyzeExercise en useCallback para estabilizarla
+  const analyzeExercise = useCallback((landmarks) => {
     if (!landmarks) return;
 
     if (selectedExercise === 'squat') {
@@ -134,7 +134,7 @@ function App() {
     } else {
       setFeedback('');
     }
-  };
+  }, [selectedExercise]); // Se actualiza solo cuando selectedExercise cambia
 
   useEffect(() => {
     const holistic = new Holistic({
@@ -152,7 +152,7 @@ function App() {
     holistic.onResults((results) => {
       // Verificar que el canvas esté disponible
       const canvas = canvasRef.current;
-      if (!canvas) return; // Si el canvas no existe, no continuamos
+      if (!canvas) return;
 
       const ctx = canvas.getContext('2d');
       // Asegurarse de que el canvas tenga dimensiones definidas
@@ -164,8 +164,14 @@ function App() {
 
       if (results.poseLandmarks) {
         // Dibuja las conexiones y landmarks
-        drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 4 });
-        drawLandmarks(ctx, results.poseLandmarks, { color: '#FF0000', lineWidth: 2 });
+        drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
+          color: '#00FF00',
+          lineWidth: 4,
+        });
+        drawLandmarks(ctx, results.poseLandmarks, {
+          color: '#FF0000',
+          lineWidth: 2,
+        });
         analyzeExercise(results.poseLandmarks);
       }
     });
@@ -185,7 +191,7 @@ function App() {
     return () => {
       if (camera) camera.stop();
     };
-  }, [selectedExercise]); // Se vuelve a configurar si se cambia el ejercicio
+  }, [selectedExercise, analyzeExercise]); // Se actualiza si cambia selectedExercise o analyzeExercise
 
   return (
     <Container>
