@@ -122,13 +122,12 @@ function App() {
   const [zoom, setZoom] = useState(1);
 
   // Valores ideales de ángulos para cada ejercicio
-  const idealAngles = useMemo(() => ({
-    squat: 85,         
-    biceps: 35,        
-    sumoDeadlift: 115, 
-    crunch: 110        
-}), []);
-
+  const idealAngles = {
+    squat: 85,         // Sentadilla: ángulo ideal de la rodilla
+    biceps: 35,        // Bíceps Curl: ángulo ideal del codo
+    sumoDeadlift: 115, // Peso Muerto Sumo: ángulo ideal del torso
+    crunch: 110        // Crunch: ángulo ideal (nariz-hombro-cadera)
+  };
 
   // Función para calcular el ángulo entre 3 puntos (en grados)
   const computeAngle = (A, B, C) => {
@@ -140,6 +139,7 @@ function App() {
     return angle;
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const analyzeExercise = useCallback((landmarks) => {
     if (!landmarks) return;
     
@@ -147,8 +147,9 @@ function App() {
     let localFeedback = '';
     let currentAngle = 0;
     let ideal = 0;
-  
+
     if (selectedExercise === 'squat') {
+      // Sentadillas
       const hip = landmarks[23];
       const knee = landmarks[25];
       const ankle = landmarks[27];
@@ -163,6 +164,7 @@ function App() {
         isCorrect = true;
       }
     } else if (selectedExercise === 'biceps') {
+      // Bíceps Curl
       const shoulder = landmarks[12];
       const elbow = landmarks[14];
       const wrist = landmarks[16];
@@ -177,6 +179,7 @@ function App() {
         isCorrect = true;
       }
     } else if (selectedExercise === 'sumoDeadlift') {
+      // Peso Muerto Sumo
       const shoulder = landmarks[11];
       const hip = landmarks[23];
       const knee = landmarks[25];
@@ -191,6 +194,7 @@ function App() {
         isCorrect = true;
       }
     } else if (selectedExercise === 'crunch') {
+      // Crunch
       const nose = landmarks[0];
       const shoulder = landmarks[12];
       const hip = landmarks[24];
@@ -205,7 +209,7 @@ function App() {
         isCorrect = true;
       }
     }
-  
+
     // Actualizar el contador de fotogramas correctos
     if (isCorrect) {
       correctCountRef.current = Math.min(correctCountRef.current + 1, CORRECT_THRESHOLD);
@@ -213,13 +217,22 @@ function App() {
       correctCountRef.current = 0;
     }
     setProgress(Math.round((correctCountRef.current / CORRECT_THRESHOLD) * 100));
-  
+
+    // Si se mantiene la postura perfecta durante los fotogramas requeridos, se aprueba el ejercicio
     if (correctCountRef.current === CORRECT_THRESHOLD) {
       localFeedback = `${localFeedback} — ¡Ejercicio aprobado!`;
     }
     setFeedback(localFeedback);
-  }, [selectedExercise, idealAngles]);
-  
+
+    // Dibujo de indicadores en el canvas:
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.font = '20px Arial';
+      ctx.fillStyle = 'yellow';
+      ctx.fillText(`Ángulo: ${Math.round(currentAngle)}° (Ideal: ${ideal}°)`, 10, 30);
+    }
+  }, [selectedExercise]);
 
   // Configuración de Mediapipe Holistic y cámara
   useEffect(() => {
