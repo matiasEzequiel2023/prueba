@@ -122,12 +122,13 @@ function App() {
   const [zoom, setZoom] = useState(1);
 
   // Valores ideales de ángulos para cada ejercicio
-  const idealAngles = {
-    squat: 85,         // Sentadilla: ángulo ideal de la rodilla
-    biceps: 35,        // Bíceps Curl: ángulo ideal del codo
-    sumoDeadlift: 115, // Peso Muerto Sumo: ángulo ideal del torso
-    crunch: 110        // Crunch: ángulo ideal (nariz-hombro-cadera)
-  };
+  const idealAngles = useMemo(() => ({
+    squat: 85,         
+    biceps: 35,        
+    sumoDeadlift: 115, 
+    crunch: 110        
+}), []);
+
 
   // Función para calcular el ángulo entre 3 puntos (en grados)
   const computeAngle = (A, B, C) => {
