@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Holistic, POSE_CONNECTIONS } from '@mediapipe/holistic';
 import { Camera } from '@mediapipe/camera_utils';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
@@ -29,7 +29,6 @@ const Header = styled.h1`
   border-bottom: 2px solid #FF8C00;
 `;
 
-// Se ha modificado el VideoContainer para que sea más largo y se centre su contenido
 const VideoContainer = styled.div`
   position: relative;
   width: 100%;
@@ -104,24 +103,17 @@ const ZoomSlider = styled.input`
   width: 300px;
 `;
 
-// =======================
-// COMPONENTE PRINCIPAL
-// =======================
 function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  // Contador para los fotogramas consecutivos en los que la postura es correcta
   const correctCountRef = useRef(0);
-  // Umbral para considerar que la postura es perfecta
   const CORRECT_THRESHOLD = 50;
 
-  // Estados para feedback, progreso, ejercicio seleccionado y zoom
   const [feedback, setFeedback] = useState('');
   const [progress, setProgress] = useState(0);
   const [selectedExercise, setSelectedExercise] = useState('squat');
   const [zoom, setZoom] = useState(1);
 
-  // Valores ideales de ángulos para cada ejercicio
   const idealAngles = {
     squat: 85,         // Sentadilla: ángulo ideal de la rodilla
     biceps: 35,        // Bíceps Curl: ángulo ideal del codo
@@ -139,8 +131,8 @@ function App() {
     return angle;
   };
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const analyzeExercise = useCallback((landmarks) => {
+  // Función definida de manera normal (sin useCallback)
+  const analyzeExercise = (landmarks) => {
     if (!landmarks) return;
     
     let isCorrect = false;
@@ -232,7 +224,7 @@ function App() {
       ctx.fillStyle = 'yellow';
       ctx.fillText(`Ángulo: ${Math.round(currentAngle)}° (Ideal: ${ideal}°)`, 10, 30);
     }
-  }, [selectedExercise]);
+  };
 
   // Configuración de Mediapipe Holistic y cámara
   useEffect(() => {
@@ -274,7 +266,8 @@ function App() {
     return () => {
       if (camera) camera.stop();
     };
-  }, [selectedExercise, analyzeExercise]);
+  }, [selectedExercise]); 
+  // Nota: Al definir analyzeExercise de forma normal, no lo incluimos en la dependencia, ya que se reconstruye en cada render
 
   return (
     <Container>
