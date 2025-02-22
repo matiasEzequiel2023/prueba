@@ -226,7 +226,6 @@ function App() {
     }
   };
 
-  // Configuración de Mediapipe Holistic y cámara
   useEffect(() => {
     const holistic = new Holistic({
       locateFile: (file) =>
@@ -238,6 +237,94 @@ function App() {
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5,
     });
+  
+    // Definir la función dentro del useEffect
+    const analyzeExercise = (landmarks) => {
+      if (!landmarks) return;
+      let isCorrect = false;
+      let localFeedback = '';
+      let currentAngle = 0;
+      let ideal = 0;
+  
+      if (selectedExercise === 'squat') {
+        const hip = landmarks[23];
+        const knee = landmarks[25];
+        const ankle = landmarks[27];
+        currentAngle = computeAngle(hip, knee, ankle);
+        ideal = idealAngles.squat;
+        if (currentAngle > 160) {
+          localFeedback = '¡Estás de pie! Baja para iniciar la sentadilla.';
+        } else if (currentAngle <= 160 && currentAngle > ideal) {
+          localFeedback = 'Bajando... Acerca tu ángulo a ' + ideal + '°.';
+        } else if (currentAngle <= ideal) {
+          localFeedback = '¡Sentadilla perfecta! Mantén la posición.';
+          isCorrect = true;
+        }
+      } else if (selectedExercise === 'biceps') {
+        const shoulder = landmarks[12];
+        const elbow = landmarks[14];
+        const wrist = landmarks[16];
+        currentAngle = computeAngle(shoulder, elbow, wrist);
+        ideal = idealAngles.biceps;
+        if (currentAngle > 160) {
+          localFeedback = 'Brazo extendido. Flexiona el codo para iniciar el curl.';
+        } else if (currentAngle <= 160 && currentAngle > ideal) {
+          localFeedback = 'En movimiento... Trata de alcanzar ' + ideal + '°.';
+        } else if (currentAngle <= ideal) {
+          localFeedback = '¡Curl perfecto! Mantén el codo pegado al torso.';
+          isCorrect = true;
+        }
+      } else if (selectedExercise === 'sumoDeadlift') {
+        const shoulder = landmarks[11];
+        const hip = landmarks[23];
+        const knee = landmarks[25];
+        currentAngle = computeAngle(shoulder, hip, knee);
+        ideal = idealAngles.sumoDeadlift;
+        if (currentAngle > 170) {
+          localFeedback = 'Posición inicial. Baja la cadera para iniciar.';
+        } else if (currentAngle <= 170 && currentAngle > ideal) {
+          localFeedback = 'Bajando... Acerca el ángulo a ' + ideal + '°.';
+        } else if (currentAngle <= ideal) {
+          localFeedback = '¡Peso muerto sumo perfecto! Mantén la postura.';
+          isCorrect = true;
+        }
+      } else if (selectedExercise === 'crunch') {
+        const nose = landmarks[0];
+        const shoulder = landmarks[12];
+        const hip = landmarks[24];
+        currentAngle = computeAngle(nose, shoulder, hip);
+        ideal = idealAngles.crunch;
+        if (currentAngle > 160) {
+          localFeedback = 'Inicia el crunch levantando el torso.';
+        } else if (currentAngle <= 160 && currentAngle > ideal) {
+          localFeedback = 'Crunch en progreso... Trata de alcanzar ' + ideal + '°.';
+        } else if (currentAngle <= ideal) {
+          localFeedback = '¡Crunch perfecto! Mantén la contracción.';
+          isCorrect = true;
+        }
+      }
+  
+      if (isCorrect) {
+        correctCountRef.current = Math.min(correctCountRef.current + 1, CORRECT_THRESHOLD);
+      } else {
+        correctCountRef.current = 0;
+      }
+      setProgress(Math.round((correctCountRef.current / CORRECT_THRESHOLD) * 100));
+  
+      if (correctCountRef.current === CORRECT_THRESHOLD) {
+        localFeedback = `${localFeedback} — ¡Ejercicio aprobado!`;
+      }
+      setFeedback(localFeedback);
+  
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.font = '20px Arial';
+        ctx.fillStyle = 'yellow';
+        ctx.fillText(`Ángulo: ${Math.round(currentAngle)}° (Ideal: ${ideal}°)`, 10, 30);
+      }
+    };
+  
     holistic.onResults((results) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -252,6 +339,7 @@ function App() {
         analyzeExercise(results.poseLandmarks);
       }
     });
+  
     let camera = null;
     if (videoRef.current) {
       camera = new Camera(videoRef.current, {
@@ -266,7 +354,8 @@ function App() {
     return () => {
       if (camera) camera.stop();
     };
-  }, [selectedExercise, analyzeExercise]);
+  }, [selectedExercise]);
+  
   
   // Nota: Al definir analyzeExercise de forma normal, no lo incluimos en la dependencia, ya que se reconstruye en cada render
 
