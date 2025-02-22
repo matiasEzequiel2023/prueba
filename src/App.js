@@ -266,7 +266,8 @@ function App() {
     return () => {
       if (camera) camera.stop();
     };
-  }, [selectedExercise]); 
+  }, [selectedExercise, analyzeExercise]);
+  
   // Nota: Al definir analyzeExercise de forma normal, no lo incluimos en la dependencia, ya que se reconstruye en cada render
 
   return (
