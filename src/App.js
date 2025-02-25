@@ -212,7 +212,7 @@ const CALF_RAISE_STEPS = [
 ];
 
 // Función de suavizado exponencial para landmarks
-const smoothingFactor = 0.06;
+const smoothingFactor = 0.07;
 const smoothPoint = (key, newPoint, filteredPoints) => {
   if (!filteredPoints[key]) {
     filteredPoints[key] = newPoint;
@@ -326,7 +326,7 @@ function App() {
           setBicepsFeedbackMessage("Flexión detectada. Mantén la posición.");
           holdCounter.current = 60;
         } else {
-          setBicepsFeedbackMessage("Flexiona el codo para iniciar el curl.");
+          setBicepsFeedbackMessage("Flexiona el codo derecho para iniciar el curl.");
         }
       } else if (!steps[1]) {
         if (elbowAngle > 160) {
