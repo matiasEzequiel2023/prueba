@@ -239,12 +239,14 @@ function App() {
   const canvasRef = useRef(null);
   const filteredPointsRef = useRef({});
   const [playSuccess] = useSound('/sounds/success.mp3');
+  const stepsContainerRef = useRef(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(true);
+
   
   // Estado inicial: ningún ejercicio seleccionado
   const [exercise, setExercise] = useState("");
   
   // Modal de bienvenida (se muestra una única vez)
-  const [showWelcomeModal, setShowWelcomeModal] = useState(true);
 
   // Estados para Sentadilla (2 pasos)
   const [squatCompletedSteps, setSquatCompletedSteps] = useState([false, false]);
@@ -475,17 +477,40 @@ function App() {
       });
       holistic.onResults((results) => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
-          color: "#00FF00",
-          lineWidth: 4,
-        });
-        drawLandmarks(ctx, results.poseLandmarks, {
-          color: "#FFD700",
-          radius: 5,
-        });
+      
+        // Obtener el video para calcular las dimensiones
+        const video = videoRef.current;
+        if (video) {
+          const videoWidth = video.videoWidth;   // Resolución original (ej. 640)
+          const videoHeight = video.videoHeight; // Resolución original (ej. 480)
+          const containerWidth = video.clientWidth;   // Dimensiones mostradas en mobile
+          const containerHeight = video.clientHeight;
+      
+          // Calcular el factor de escala y los offsets
+          const scale = Math.max(containerWidth / videoWidth, containerHeight / videoHeight);
+          const xOffset = (containerWidth - videoWidth * scale) / 2;
+          const yOffset = (containerHeight - videoHeight * scale) / 2;
+      
+          // Aplicar transformación para alinear los dibujos con el video
+          ctx.save();
+          ctx.translate(xOffset, yOffset);
+          ctx.scale(scale, scale);
+      
+          // Dibuja los landmarks y conectores
+          if (results.poseLandmarks) {
+            drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
+              color: "#00FF00",
+              lineWidth: 4,
+            });
+            drawLandmarks(ctx, results.poseLandmarks, {
+              color: "#FFD700",
+              radius: 5,
+            });
+          }
+          ctx.restore();
+        }
 
         // Solo analizar si se ha seleccionado un ejercicio
         if (exercise === EXERCISES.SQUAT) {
@@ -511,6 +536,18 @@ function App() {
     }
     loadHolistic();
   }, [exercise]);
+  
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      video.addEventListener('loadedmetadata', () => {
+        // Ajusta el canvas al tamaño real del video
+        canvasRef.current.width = video.videoWidth;
+        canvasRef.current.height = video.videoHeight;
+      });
+    }
+  }, []);
+  
 
   const handleExerciseChange = (e) => {
     setExercise(e.target.value);
@@ -622,7 +659,15 @@ function App() {
             <p>
               Asegúrate de enfocar bien la cámara para que el sistema pueda interpretar correctamente tus movimientos según el ejercicio que vayas a realizar.
             </p>
-            <button onClick={() => setShowWelcomeModal(false)}>Cerrar</button>
+            <button
+              onClick={() => {
+                setShowWelcomeModal(false);
+                // Realiza el scroll hacia el contenedor deseado
+                stepsContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              Cerrar
+            </button>
           </ModalContent>
         </Modal>
       )}
