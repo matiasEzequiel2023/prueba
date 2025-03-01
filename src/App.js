@@ -11,31 +11,31 @@ const Container = styled.div`
   align-items: center;
   padding: 20px;
   font-family: 'Helvetica Neue', sans-serif;
-  background: #000;
+  background: #F9FAFB; /* Fondo claro */
   min-height: 100vh;
-  color: #fff;
+  color: #333; /* Texto oscuro */
 `;
 
 const Header = styled.h1`
-  color: #FF8C00;
-  font-size: 2rem;
+  color: #FF6B00;
+  font-size: 2.5rem;
   text-transform: uppercase;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
 `;
 
 const SelectContainer = styled.div`
   display: flex;
   justify-content: center;
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 20px;
 `;
 
 const Select = styled.select`
   padding: 10px;
   font-size: 18px;
-  border-radius: 5px;
-  background: #FF8C00;
-  color: white;
+  border-radius: 25px;
+  background: #FF6B00;
+  color: #fff;
   border: none;
   cursor: pointer;
 `;
@@ -46,7 +46,7 @@ const VideoContainer = styled.div`
   height: 450px;
   max-width: 700px;
   background: #000;
-  border-radius: 10px;
+  border-radius: 25px;
   overflow: hidden;
   display: flex;
   justify-content: center;
@@ -69,13 +69,14 @@ const CanvasStyled = styled.canvas`
 const FeedbackContainer = styled.div`
   width: 100%;
   max-width: 700px;
-  background: #222;
-  border-radius: 10px;
-  padding: 15px;
+  background: #FFF;
+  border-radius: 25px;
+  padding: 20px;
   margin-top: 20px;
   text-align: center;
   font-size: 18px;
-  color: #fff;
+  color: #333;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 `;
 
 const ProgressBar = styled.div`
@@ -104,8 +105,8 @@ const ProgressStep = styled.div`
   justify-content: center;
   font-size: 18px;
   font-weight: bold;
-  color: ${(props) => (props.completed ? 'black' : 'white')};
-  background: ${(props) => (props.completed ? 'green' : '#444')};
+  color: #fff;
+  background: ${(props) => (props.completed ? '#28a745' : '#444')};
   transition: background 0.3s;
 `;
 
@@ -113,13 +114,13 @@ const StepTitle = styled.span`
   margin-top: 5px;
   font-size: 14px;
   text-align: center;
-  color: ${(props) => (props.completed ? 'green' : '#fff')};
+  color: ${(props) => (props.completed ? '#28a745' : '#333')};
 `;
 
 const FinalFeedback = styled.div`
   margin-top: 20px;
   font-size: 20px;
-  color: #0f0;
+  color: #28a745;
 `;
 
 const fadeIn = keyframes`
@@ -141,33 +142,33 @@ const Modal = styled.div`
 `;
 
 const ModalContent = styled.div`
-  background: #000;
-  color: #FF8C00;
+  background: #FFF;
+  color: #333;
   padding: 40px;
-  border-radius: 12px;
+  border-radius: 25px;
   text-align: center;
-  box-shadow: 0 10px 25px rgba(255, 140, 0, 0.5);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   animation: ${fadeIn} 0.3s ease-in-out;
-  border: 2px solid #FF8C00;
+  border: 2px solid #FF6B00;
   max-width: 450px;
 
   h2 {
     margin-bottom: 20px;
     font-size: 24px;
-    color: #FF8C00;
+    color: #FF6B00;
   }
   p {
     font-size: 18px;
     margin-bottom: 20px;
-    color: #fff;
+    color: #333;
   }
   button {
     padding: 10px 20px;
     font-size: 16px;
-    background: #FF8C00;
+    background: #FF6B00;
     border: none;
-    border-radius: 5px;
-    color: #000;
+    border-radius: 25px;
+    color: #FFF;
     cursor: pointer;
     transition: background 0.3s;
   }
@@ -242,12 +243,9 @@ function App() {
   const stepsContainerRef = useRef(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
 
-  
   // Estado inicial: ningún ejercicio seleccionado
   const [exercise, setExercise] = useState("");
   
-  // Modal de bienvenida (se muestra una única vez)
-
   // Estados para Sentadilla (2 pasos)
   const [squatCompletedSteps, setSquatCompletedSteps] = useState([false, false]);
   const [squatFeedbackMessage, setSquatFeedbackMessage] = useState("");
@@ -431,7 +429,7 @@ function App() {
     if (!landmarks) return;
     const ankle = smoothPoint("ankle_r_calf", landmarks[28], filteredPointsRef.current);
     const heel = smoothPoint("heel_r", landmarks[30], filteredPointsRef.current);
-    const diff = ankle.y - heel.y; // Si el talón se eleva, diff aumenta
+    const diff = ankle.y - heel.y;
 
     setCalfCompletedSteps(prevSteps => {
       const steps = [...prevSteps];
@@ -480,25 +478,21 @@ function App() {
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-        // Obtener el video para calcular las dimensiones
         const video = videoRef.current;
         if (video) {
-          const videoWidth = video.videoWidth;   // Resolución original (ej. 640)
-          const videoHeight = video.videoHeight; // Resolución original (ej. 480)
-          const containerWidth = video.clientWidth;   // Dimensiones mostradas en mobile
+          const videoWidth = video.videoWidth;
+          const videoHeight = video.videoHeight;
+          const containerWidth = video.clientWidth;
           const containerHeight = video.clientHeight;
       
-          // Calcular el factor de escala y los offsets
           const scale = Math.max(containerWidth / videoWidth, containerHeight / videoHeight);
           const xOffset = (containerWidth - videoWidth * scale) / 2;
           const yOffset = (containerHeight - videoHeight * scale) / 2;
       
-          // Aplicar transformación para alinear los dibujos con el video
           ctx.save();
           ctx.translate(xOffset, yOffset);
           ctx.scale(scale, scale);
       
-          // Dibuja los landmarks y conectores
           if (results.poseLandmarks) {
             drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
               color: "#00FF00",
@@ -512,7 +506,6 @@ function App() {
           ctx.restore();
         }
 
-        // Solo analizar si se ha seleccionado un ejercicio
         if (exercise === EXERCISES.SQUAT) {
           analyzeSquat(results.poseLandmarks);
         } else if (exercise === EXERCISES.BICEPS_CURL) {
@@ -541,17 +534,14 @@ function App() {
     const video = videoRef.current;
     if (video) {
       video.addEventListener('loadedmetadata', () => {
-        // Ajusta el canvas al tamaño real del video
         canvasRef.current.width = video.videoWidth;
         canvasRef.current.height = video.videoHeight;
       });
     }
   }, []);
   
-
   const handleExerciseChange = (e) => {
     setExercise(e.target.value);
-    // Reiniciamos todos los estados al cambiar de ejercicio
     setSquatCompletedSteps([false, false]);
     setSquatFeedbackMessage("");
     setBicepsCompletedSteps([false, false]);
@@ -567,7 +557,6 @@ function App() {
     holdCounter.current = 0;
   };
 
-  // Seleccionamos los pasos y mensajes según el ejercicio actual
   let stepsArray = [];
   let feedback = "";
   let completedSteps = [];
@@ -662,7 +651,6 @@ function App() {
             <button
               onClick={() => {
                 setShowWelcomeModal(false);
-                // Realiza el scroll hacia el contenedor deseado
                 stepsContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
               }}
             >
